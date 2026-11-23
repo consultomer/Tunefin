@@ -1,0 +1,14 @@
+# build output
+node_modules/
+ytm-sidecar/dist/
+bin/
+obj/
+dist/
+
+# local runtime data and secrets
+.env
+data/
+secrets/
+*.cookies.txt
+cookies.txt
+*.log

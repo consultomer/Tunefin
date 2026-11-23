@@ -1,0 +1,24 @@
+{
+  "name": "ytm-sidecar",
+  "version": "1.0.0",
+  "private": true,
+  "description": "YouTube Music search/stream/download sidecar for Tunefin (Jellyfin YouTube Music plugin)",
+  "type": "module",
+  "main": "dist/server.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "dev": "tsc -p tsconfig.json --watch"
+  },
+  "dependencies": {
+    "fastify": "^5.12.8",
+    "youtubei.js": "^18.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "typescript": "~5.9"
+  }
+}

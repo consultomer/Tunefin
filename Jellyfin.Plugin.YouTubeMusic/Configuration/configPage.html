@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Tunefin</title>
+</head>
+<body>
+    <div id="YouTubeMusicConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-checkbox,emby-textarea">
+        <div data-role="content">
+            <div class="content-primary">
+                <form id="YouTubeMusicConfigForm">
+                    <div class="verticalSection verticalSection-extrabottompadding">
+                        <div class="sectionTitleContainer flex align-items-center">
+                            <h2 class="sectionTitle">Tunefin</h2>
+                        </div>
+                        <p>Streams YouTube Music through the <code>ytm-sidecar</code> service and downloads favorited songs into your music library.</p>
+                    </div>
+
+                    <div class="inputContainer">
+                        <input is="emby-input" type="url" id="SidecarUrl" required label="Sidecar URL" />
+                        <div class="fieldDescription">Address of ytm-sidecar <b>as seen from the Jellyfin server</b>, e.g. <code>http://ytm-sidecar:8787</code> in Docker Compose.</div>
+                    </div>
+
+                    <div class="inputContainer">
+                        <input is="emby-input" type="password" id="SidecarApiKey" label="Sidecar API key (optional)" autocomplete="off" />
+                        <div class="fieldDescription">Must match the sidecar's <code>API_KEY</code> environment variable, if you set one.</div>
+                    </div>
+
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label class="emby-checkbox-label">
+                            <input is="emby-checkbox" type="checkbox" id="EnableAutoDownloadOnFavorite" />
+                            <span>Download songs when they are marked as Favorite</span>
+                        </label>
+                    </div>
+
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label class="emby-checkbox-label">
+                            <input is="emby-checkbox" type="checkbox" id="TriggerLibraryScanAfterDownload" />
+                            <span>Scan the library after a download finishes</span>
+                        </label>
+                    </div>
+
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label class="emby-checkbox-label">
+                            <input is="emby-checkbox" type="checkbox" id="EnableSearchInjection" />
+                            <span>Show YouTube Music matches in the normal search box (Jellyfin Web, Finamp)</span>
+                        </label>
+                        <div class="fieldDescription checkboxFieldDescription">Song searches get the top YouTube matches added after your local results, labelled "· YouTube".</div>
+                    </div>
+
+                    <div class="inputContainer">
+                        <input is="emby-input" type="number" id="SearchInjectionLimit" min="1" max="20" label="YouTube matches per search" />
+                    </div>
+
+                    <div class="inputContainer">
+                        <input is="emby-input" type="number" id="ImportConcurrency" min="1" max="32" label="Parallel downloads during a likes import" />
+                        <div class="fieldDescription">Also raise MAX_CONCURRENT_DOWNLOADS on the ytm-sidecar container to at least this number.</div>
+                    </div>
+
+                    <div class="inputContainer">
+                        <input is="emby-input" type="number" id="SearchResultLimit" min="1" max="50" label="Results per channel folder" />
+                    </div>
+
+                    <div class="inputContainer">
+                        <textarea is="emby-textarea" id="SavedSearches" rows="5" label="Pinned searches (optional, one per line)"></textarea>
+                        <div class="fieldDescription">Optional. Each line is pinned as a folder in the <b>YouTube Music</b> channel. Searches you type in the search box also appear there as recent folders.</div>
+                    </div>
+
+                    <div>
+                        <button is="emby-button" type="submit" class="raised button-submit block emby-button">
+                            <span>Save</span>
+                        </button>
+                    </div>
+                </form>
+
+                <div class="verticalSection" style="margin-top:2em;">
+                    <h3 class="sectionTitle">Users &amp; liked songs</h3>
+                    <div class="inputContainer">
+                        <input is="emby-input" type="text" id="LibraryRootPath" label="YouTube folder, as seen by Jellyfin" />
+                        <div class="fieldDescription">Same host folder the sidecar mounts as YOUTUBE_DIR (e.g. /media/YouTube). Each user gets a private library in a sub-folder. Must not be inside another library.</div>
+                    </div>
+                    <p>Each user has a private library, <i>Liked – name</i>, that only they can see. Songs liked by several users are stored once (hardlinks).
+                       Users connect their YouTube Music account themselves at <a id="AccountLink" href="#" target="_blank" rel="noopener">/YouTubeMusic/Account</a>
+                       (they must be signed in to Jellyfin Web in the same browser).</p>
+                    <div id="UsersTable" style="font-family:monospace; white-space:pre-wrap;">Loading…</div>
+                    <button is="emby-button" type="button" id="RefreshUsersButton" class="raised emby-button"><span>Refresh</span></button>
+                    <button is="emby-button" type="button" id="PrivacyButton" class="raised emby-button"><span>Re-apply privacy</span></button>
+                </div>
+
+                <div class="verticalSection" style="margin-top:2em;">
+                    <h3 class="sectionTitle">Test connection</h3>
+                    <div class="inputContainer">
+                        <input is="emby-input" type="text" id="TestQuery" label="Search YouTube Music" value="Daft Punk" />
+                    </div>
+                    <button is="emby-button" type="button" id="TestSearchButton" class="raised emby-button"><span>Search</span></button>
+                    <button is="emby-button" type="button" id="AddSearchButton" class="raised emby-button"><span>Add as saved search</span></button>
+                    <div id="TestResults" style="margin-top:1em; white-space:pre-wrap; font-family:monospace;"></div>
+                </div>
+            </div>
+        </div>
+
+        <script type="text/javascript">
+            (function () {
+                var pluginId = 'a740aa66-e7b5-4e6f-92a1-99d0d3a77a69';
+                var page = document.querySelector('#YouTubeMusicConfigPage');
+
+                function $(id) { return page.querySelector('#' + id); }
+
+                function load() {
+                    Dashboard.showLoadingMsg();
+                    ApiClient.getPluginConfiguration(pluginId).then(function (config) {
+                        $('SidecarUrl').value = config.SidecarUrl || 'http://ytm-sidecar:8787';
+                        $('SidecarApiKey').value = config.SidecarApiKey || '';
+                        $('EnableAutoDownloadOnFavorite').checked = !!config.EnableAutoDownloadOnFavorite;
+                        $('TriggerLibraryScanAfterDownload').checked = !!config.TriggerLibraryScanAfterDownload;
+                        $('SearchResultLimit').value = config.SearchResultLimit || 10;
+                        $('EnableSearchInjection').checked = config.EnableSearchInjection !== false;
+                        $('SearchInjectionLimit').value = config.SearchInjectionLimit || 5;
+                        $('ImportConcurrency').value = config.ImportConcurrency || 10;
+                        $('LibraryRootPath').value = config.LibraryRootPath || '/media/YouTube';
+                        $('SavedSearches').value = (config.SavedSearches || []).join('\n');
+                        Dashboard.hideLoadingMsg();
+                    });
+                }
+
+                function loadUsers() {
+                    ApiClient.getJSON(ApiClient.getUrl('YouTubeMusic/Users')).then(function (users) {
+                        var out = $('UsersTable');
+                        out.innerHTML = '';
+                        users.forEach(function (u) {
+                            var s = u.Status || {};
+                            var line = document.createElement('div');
+                            line.style.margin = '.4em 0';
+                            line.textContent = u.Username + '  |  YouTube: ' + (s.HasCookies ? 'connected (' + (s.LikedOnYouTube || 0) + ' liked)' : 'not connected') +
+                                '  |  in library: ' + (s.InLibrary || 0) + (s.Running ? '  |  importing…' : '') + (s.LastResult ? '  |  ' + s.LastResult : '') + '  ';
+                            var b = document.createElement('button');
+                            b.textContent = 'Import now';
+                            b.onclick = function () { ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('YouTubeMusic/Users/' + u.Id + '/Sync') }).then(function () { setTimeout(loadUsers, 1000); }); };
+                            line.appendChild(b);
+                            out.appendChild(line);
+                        });
+                    }, function () { $('UsersTable').textContent = 'Could not load users.'; });
+                }
+
+                page.addEventListener('pageshow', function () {
+                    load();
+                    loadUsers();
+                    $('AccountLink').href = ApiClient.getUrl('YouTubeMusic/Account');
+                    $('AccountLink').textContent = ApiClient.getUrl('YouTubeMusic/Account');
+                });
+                $('RefreshUsersButton').addEventListener('click', loadUsers);
+                $('PrivacyButton').addEventListener('click', function () {
+                    ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('YouTubeMusic/Privacy/Apply') }).then(function () { Dashboard.alert('Library privacy re-applied.'); });
+                });
+
+                $('YouTubeMusicConfigForm').addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    Dashboard.showLoadingMsg();
+                    ApiClient.getPluginConfiguration(pluginId).then(function (config) {
+                        config.SidecarUrl = $('SidecarUrl').value.trim().replace(/\/+$/, '');
+                        config.SidecarApiKey = $('SidecarApiKey').value;
+                        config.EnableAutoDownloadOnFavorite = $('EnableAutoDownloadOnFavorite').checked;
+                        config.TriggerLibraryScanAfterDownload = $('TriggerLibraryScanAfterDownload').checked;
+                        config.SearchResultLimit = parseInt($('SearchResultLimit').value, 10) || 10;
+                        config.EnableSearchInjection = $('EnableSearchInjection').checked;
+                        config.SearchInjectionLimit = parseInt($('SearchInjectionLimit').value, 10) || 5;
+                        config.ImportConcurrency = parseInt($('ImportConcurrency').value, 10) || 10;
+                        config.LibraryRootPath = ($('LibraryRootPath').value.trim() || '/media/YouTube').replace(/\/+$/, '');
+                        config.SavedSearches = $('SavedSearches').value.split('\n')
+                            .map(function (s) { return s.trim(); })
+                            .filter(function (s) { return s.length > 0; });
+                        ApiClient.updatePluginConfiguration(pluginId, config).then(Dashboard.processPluginConfigurationUpdateResult);
+                    });
+                    return false;
+                });
+
+                $('TestSearchButton').addEventListener('click', function () {
+                    var out = $('TestResults');
+                    out.textContent = 'Searching…';
+                    var url = ApiClient.getUrl('YouTubeMusic/Search', { q: $('TestQuery').value });
+                    ApiClient.getJSON(url).then(function (results) {
+                        out.textContent = results.length + ' result(s):\n' + results.map(function (r) {
+                            return '• ' + r.artist + ' — ' + r.title + (r.album ? ' [' + r.album + ']' : '');
+                        }).join('\n');
+                    }, function (err) {
+                        out.textContent = 'Failed — check the Sidecar URL (save first) and the server log.';
+                    });
+                });
+
+                $('AddSearchButton').addEventListener('click', function () {
+                    var q = $('TestQuery').value.trim();
+                    if (!q) return;
+                    ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('YouTubeMusic/SavedSearches', { query: q }) })
+                        .then(function () { load(); Dashboard.alert('Added "' + q + '" to saved searches.'); });
+                });
+            })();
+        </script>
+    </div>
+</body>
+</html>
