@@ -14,6 +14,7 @@ Tunefin brings **YouTube Music** into **Jellyfin** and **Finamp**. Search YouTub
   - [Requirements](#requirements)
   - [New Install (Jellyfin Included)](#new-install-jellyfin-included)
   - [Existing Jellyfin Installation](#existing-jellyfin-installation)
+  - [Jellyfin Without Containers](#jellyfin-without-containers)
 - [Connect Your YouTube Account](#connect-your-youtube-account)
 - [Usage](#usage)
 - [Configuration](#configuration)
@@ -80,7 +81,8 @@ Tunefin/
 ├── ytm-sidecar/                    # Fastify + TypeScript service (yt-dlp, ffmpeg)
 │   └── src/                        # search, stream, download, likes, library
 ├── docs/
-│   └── existing-jellyfin.md        # Guide for adding Tunefin to an existing Jellyfin
+│   ├── existing-jellyfin.md        # Guide for adding Tunefin to an existing Jellyfin container
+│   └── native-jellyfin.md          # Guide for a Jellyfin installed without containers
 ├── docker-compose.yml              # Full stack: Jellyfin + sidecar + plugin installer
 ├── docker-compose.addon.yml        # Sidecar + plugin installer for an existing Jellyfin
 ├── build-plugin.sh                 # Builds the plugin DLL into dist/ without Compose
@@ -90,7 +92,7 @@ Tunefin/
 ## Installation
 
 ### Requirements
-- Docker with Compose v2
+- Docker with Compose v2 (or, for a Jellyfin without containers, Node 20+, ffmpeg and yt-dlp: see [Jellyfin Without Containers](#jellyfin-without-containers))
 - Jellyfin **12.4** (the full stack below installs it for you). For other versions see [Other Jellyfin Versions](#other-jellyfin-versions).
 
 ### New Install (Jellyfin Included)
@@ -123,6 +125,10 @@ Folders created under `./data/`:
 ### Existing Jellyfin Installation
 
 See **[docs/existing-jellyfin.md](docs/existing-jellyfin.md)**. In short, you add two containers (the sidecar and a one-shot plugin installer) to your setup and mount one extra folder into Jellyfin. You don't need to rebuild or reconfigure Jellyfin.
+
+### Jellyfin Without Containers
+
+If Jellyfin is installed directly on the machine (a distro package, a seedbox or a shared host), see **[docs/native-jellyfin.md](docs/native-jellyfin.md)**. You build the plugin once and copy it into Jellyfin's `plugins` folder, then run the sidecar as a normal Node process (systemd, or `screen` + cron) as the same user as Jellyfin.
 
 ## Connect Your YouTube Account
 
