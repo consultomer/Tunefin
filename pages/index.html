@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tunefin for Jellyfin</title>
+<meta name="description" content="Jellyfin plugin repository for Tunefin: YouTube Music search, playback and liked-song downloads in Jellyfin and Finamp.">
+<link rel="icon" href="icon.png">
+<style>
+:root {
+  --bg: #f4f7fa; --fg: #13203a; --muted: #55657a; --surface: #ffffff; --line: #d3dce6;
+  --accent: #0a7f8f; --accent-fg: #ffffff; --code: #e9eff4;
+  --font: "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root {
+  --bg: #0e1630; --fg: #e6edf5; --muted: #9aaabd; --surface: #152043; --line: #26345c;
+  --accent: #5fd0dc; --accent-fg: #0e1630; --code: #0b1226; color-scheme: dark } }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 16px; line-height: 1.6; }
+.wrap { max-width: 760px; margin: 0 auto; padding: 48px max(18px, env(safe-area-inset-right)) 72px max(18px, env(safe-area-inset-left)); display: flex; flex-direction: column; gap: 36px; }
+header { display: flex; gap: 22px; align-items: center; flex-wrap: wrap; }
+header img { width: 96px; height: 96px; border-radius: 22px; }
+h1 { margin: 0; font-size: 40px; line-height: 1.1; letter-spacing: -.01em; }
+.tag { margin: 4px 0 0; color: var(--muted); }
+h2 { margin: 0 0 12px; font-size: 21px; }
+section { display: flex; flex-direction: column; }
+.repo { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px; display: flex; flex-direction: column; gap: 10px; }
+.label { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.url { display: flex; gap: 10px; flex-wrap: wrap; }
+.url code { flex: 1 1 320px; min-width: 0; overflow-wrap: anywhere; background: var(--code); padding: 10px 12px; border-radius: 6px; font-family: var(--mono); font-size: 14px; }
+button { font: inherit; font-weight: 600; background: var(--accent); color: var(--accent-fg); border: 0; border-radius: 6px; padding: 10px 16px; cursor: pointer; }
+button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+ol, ul { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 8px; }
+code { font-family: var(--mono); font-size: .9em; }
+a { color: var(--accent); }
+.note { border-left: 3px solid var(--accent); padding: 4px 0 4px 14px; color: var(--muted); }
+footer { color: var(--muted); font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img src="icon.png" alt="Tunefin logo">
+    <div>
+      <h1>Tunefin</h1>
+      <p class="tag">Search, play and keep YouTube Music in Jellyfin and Finamp.</p>
+    </div>
+  </header>
+
+  <div class="repo">
+    <span class="label">Jellyfin plugin repository</span>
+    <div class="url">
+      <code id="repo-url">manifest.json</code>
+      <button id="copy" type="button">Copy</button>
+    </div>
+  </div>
+
+  <section>
+    <h2>Install</h2>
+    <ol>
+      <li>In Jellyfin, open <strong>Dashboard → Plugins → Repositories</strong> and click <strong>+</strong>.</li>
+      <li>Name it <em>Tunefin</em> and paste the repository URL above.</li>
+      <li>Open <strong>Catalog</strong>, choose <strong>Tunefin</strong> and click <strong>Install</strong>.</li>
+      <li>Restart Jellyfin.</li>
+      <li>In <strong>Dashboard → Plugins → Tunefin</strong>, set the <strong>Sidecar URL</strong> and the <strong>YouTube folder</strong>, then click <strong>Test connection</strong>.</li>
+      <li>Each user connects their YouTube account at <code>https://&lt;your-jellyfin&gt;/YouTube</code>.</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Requirements</h2>
+    <p>Jellyfin 12.4. Tunefin also needs its small companion service, <strong>ytm-sidecar</strong>, which runs yt-dlp and ffmpeg. Set it up with Docker, or directly on the server:</p>
+    <ul>
+      <li><a href="https://github.com/consultomer/Tunefin/blob/main/docs/existing-jellyfin.md">Jellyfin in Docker</a></li>
+      <li><a href="https://github.com/consultomer/Tunefin/blob/main/docs/native-jellyfin.md">Jellyfin without containers</a></li>
+    </ul>
+  </section>
+
+  <p class="note">Tunefin is not affiliated with YouTube, Google or Jellyfin. It uses yt-dlp and unofficial YouTube APIs, which can break at any time.</p>
+
+  <footer>
+    <a href="https://github.com/consultomer/Tunefin">Source on GitHub</a> ·
+    <a href="https://github.com/consultomer/Tunefin/releases">Releases</a> ·
+    MIT License
+  </footer>
+</div>
+<script>
+  const url = new URL("manifest.json", location.href).href;
+  const el = document.getElementById("repo-url");
+  el.textContent = url;
+  document.getElementById("copy").addEventListener("click", async (e) => {
+    try { await navigator.clipboard.writeText(url); e.target.textContent = "Copied"; }
+    catch { getSelection().selectAllChildren(el); }
+  });
+</script>
+</body>
+</html>
