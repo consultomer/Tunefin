@@ -28,6 +28,6 @@ fi
 rm -rf "$OUT" && mkdir -p "$OUT"
 cp "$PLUGIN_DIR/bin/publish/Jellyfin.Plugin.YouTubeMusic.dll" "$OUT/"
 cp "$PLUGIN_DIR/meta.json" "$OUT/"
-cp "$PLUGIN_DIR/Resources/channel.png" "$OUT/logo.png"
+cp "$PLUGIN_DIR/Resources/logo.png" "$OUT/logo.png"
 echo "Plugin staged in $OUT"
 ls -la "$OUT"
