@@ -1,0 +1,21 @@
+[
+  {
+    "guid": "a740aa66-e7b5-4e6f-92a1-99d0d3a77a69",
+    "versions": [
+      {
+        "version": "1.0.0.0",
+        "changelog": "Initial public release",
+        "targetAbi": "12.4.0.0",
+        "sourceUrl": "https://github.com/consultomer/Tunefin/releases/download/v1.0.0/tunefin_1.0.0.0.zip",
+        "checksum": "b0de384d9e95125d6770ffff27173cf7",
+        "timestamp": "2026-11-24T10:30:45Z"
+      }
+    ],
+    "name": "Tunefin",
+    "description": "Search and play YouTube Music in Jellyfin and Finamp with your own YouTube account. Liked songs are downloaded into a private per-user library, and your YouTube Music likes can be imported. Needs the ytm-sidecar service.",
+    "overview": "YouTube Music search, playback and liked-song downloads",
+    "owner": "consultomer",
+    "category": "Channels",
+    "imageUrl": "https://consultomer.github.io/Tunefin/logo.png"
+  }
+]
