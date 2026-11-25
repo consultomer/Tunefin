@@ -64,14 +64,14 @@ footer { color: var(--muted); font-size: 14px; }
       <li>Name it <em>Tunefin</em> and paste the repository URL above.</li>
       <li>Open <strong>Catalog</strong>, choose <strong>Tunefin</strong> and click <strong>Install</strong>.</li>
       <li>Restart Jellyfin.</li>
-      <li>In <strong>Dashboard → Plugins → Tunefin</strong>, set the <strong>Sidecar URL</strong> and the <strong>YouTube folder</strong>, then click <strong>Test connection</strong>.</li>
+      <li>In <strong>Dashboard → Plugins → Tunefin</strong>, check the <strong>Sidecar URL</strong> and the <strong>YouTube folder</strong> (the defaults fit the Docker setup), then click <strong>Test connection</strong>.</li>
       <li>Each user connects their YouTube account at <code>https://&lt;your-jellyfin&gt;/YouTube</code>.</li>
     </ol>
   </section>
 
   <section>
     <h2>Requirements</h2>
-    <p>Jellyfin 12.0 or newer. Tunefin also needs its small companion service, <strong>ytm-sidecar</strong>, which runs yt-dlp and ffmpeg. Set it up with Docker, or directly on the server:</p>
+    <p>Jellyfin 12.0 or newer. Tunefin also needs its small companion service, <strong>ytm-sidecar</strong>, which runs yt-dlp and ffmpeg. With Docker it's a ready-made image, <code>ghcr.io/consultomer/tunefin-sidecar</code>; it can also run directly on the server:</p>
     <ul>
       <li><a href="https://github.com/consultomer/Tunefin/blob/main/docs/existing-jellyfin.md">Jellyfin in Docker</a></li>
       <li><a href="https://github.com/consultomer/Tunefin/blob/main/docs/native-jellyfin.md">Jellyfin without containers</a></li>
