@@ -1,29 +1,18 @@
 # Add YouTube Music to a Jellyfin you ALREADY run (with Docker Compose or plain Docker).
 # Full guide: docs/existing-jellyfin.md
 #
-#   cp .env.example .env      # set JELLYFIN_CONFIG_PATH, YOUTUBE_PATH, JELLYFIN_NETWORK, PUID/PGID
-#   docker compose -f docker-compose.addon.yml up -d --build
-#   docker restart <your-jellyfin-container>     # once, to load the plugin
+#   curl -fsSLO https://raw.githubusercontent.com/consultomer/Tunefin/main/docker-compose.addon.yml
+#   curl -fsSL  https://raw.githubusercontent.com/consultomer/Tunefin/main/.env.example -o .env
+#   # edit .env: PUID/PGID, JELLYFIN_PLUGINS_PATH, YOUTUBE_PATH, JELLYFIN_NETWORK
+#   docker compose -f docker-compose.addon.yml up -d
 #
-# Your Jellyfin container also needs ${YOUTUBE_PATH} mounted at /media/YouTube (see the guide).
+# Then install Tunefin from the plugin catalog in Jellyfin. Your Jellyfin container also needs
+# ${YOUTUBE_PATH} mounted at /media/YouTube (see the guide).
 
 services:
-  ytm-plugin:
-    build: ./Jellyfin.Plugin.YouTubeMusic
-    image: jellyfin-ytm-plugin-installer:latest
-    restart: "no"
-    network_mode: none
-    environment:
-      SIDECAR_URL: http://ytm-sidecar:8787
-      LIBRARY_ROOT_PATH: ${LIBRARY_ROOT_PATH:-/media/YouTube}
-    volumes:
-      # The folder that contains Jellyfin's "plugins" folder:
-      #   official image: <config>/plugins     linuxserver image: <config>/data/plugins
-      - ${JELLYFIN_PLUGINS_PATH:?set JELLYFIN_PLUGINS_PATH in .env}:/plugins
-
   ytm-sidecar:
-    build: ./ytm-sidecar
-    image: ytm-sidecar:latest
+    # To build it from source instead, replace `image:` with `build: ./ytm-sidecar`.
+    image: ghcr.io/consultomer/tunefin-sidecar:${TUNEFIN_VERSION:-latest}
     container_name: ytm-sidecar
     restart: unless-stopped
     user: "${PUID:-0}:${PGID:-0}"
@@ -36,6 +25,8 @@ services:
       - jellyfin
     volumes:
       - ${YOUTUBE_PATH:?set YOUTUBE_PATH in .env}:/youtube
+      # The folder that contains Jellyfin's "plugins" folder:
+      #   official image: <config>/plugins     linuxserver image: <config>/data/plugins
       - ${JELLYFIN_PLUGINS_PATH:?set JELLYFIN_PLUGINS_PATH in .env}/Jellyfin.Plugin.YouTubeMusic/users:/user-cookies:ro
 
 networks:

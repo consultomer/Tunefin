@@ -1,10 +1,9 @@
 # Add Tunefin to a Jellyfin that isn't in a container
 
 Use this guide when Jellyfin is installed directly on the machine: a distro package, the
-`jellyfin` binary, a seedbox or shared host. You don't need Docker Compose. The containers in the
-other guides only do two things, and both can run directly on the host:
+`jellyfin` binary, a seedbox or shared host. You don't need Docker. Tunefin has two parts:
 
-1. **Plugin**: build the DLL once and copy it into Jellyfin's `plugins` folder.
+1. **Plugin**: installed from Jellyfin's plugin catalog, like with any other setup.
 2. **Sidecar**: a small Node service that runs `yt-dlp` and `ffmpeg`. You run it as a normal
    process next to Jellyfin.
 
@@ -43,7 +42,7 @@ The rest of this guide uses these placeholders. Replace them with your values:
 ```bash
 PLUGINS=/var/lib/jellyfin/plugins      # Jellyfin's plugins folder
 YOUTUBE=/srv/media/YouTube             # the liked-songs folder
-TUNEFIN=/opt/tunefin                   # where you cloned this repo
+TUNEFIN=/opt/tunefin                   # where the sidecar code goes (Step 4)
 ```
 
 ## Step 2: Install the tools the sidecar needs
@@ -60,32 +59,24 @@ cover art. Distro packages of yt-dlp are usually too old for YouTube.
 If you install as a user without root, yt-dlp ends up in `~/.local/bin`. That folder is often
 missing from `PATH` for cron and services, so set `YTDLP_PATH` to the full path in Step 5.
 
-## Step 3: Build and install the plugin
+## Step 3: Install the plugin
 
-The plugin needs the **.NET 10 SDK**. `build-plugin.sh` uses a local `dotnet` if you have
-version 10. Otherwise it builds in a throwaway Docker or Podman container. This is only a build
-tool: Jellyfin and the sidecar still run without containers.
+1. In Jellyfin, open **Dashboard → Plugins → Repositories**, click **+**, name it *Tunefin* and
+   paste:
+   ```
+   https://consultomer.github.io/Tunefin/manifest.json
+   ```
+2. Open **Catalog**, choose **Tunefin** and click **Install**. Don't restart yet: that happens in
+   Step 6, once the sidecar runs.
 
-```bash
-git clone https://github.com/consultomer/Tunefin.git "$TUNEFIN" && cd "$TUNEFIN"
-./build-plugin.sh                      # → dist/YouTubeMusic_<version>/
-```
-
-Copy it into Jellyfin's plugins folder as the Jellyfin user:
-
-```bash
-sudo -u jellyfin mkdir -p "$PLUGINS/configurations"
-sudo -u jellyfin cp -r dist/YouTubeMusic_* "$PLUGINS/"
-```
-
-On a host where Jellyfin runs as your own user, drop `sudo -u jellyfin`.
-
-Then create the plugin config, so it points at the native sidecar and the real folder. Generate a
-random API key first, then use the same key for the sidecar in Step 5:
+The plugin's defaults are for Docker, so point it at the native sidecar and the real folder. You
+can do that in the plugin settings after Step 6, or create its config file now. Generate a random
+API key first, then use the same key for the sidecar in Step 5:
 
 ```bash
 API_KEY=$(openssl rand -hex 24); echo "$API_KEY"    # keep this
 
+sudo -u jellyfin mkdir -p "$PLUGINS/configurations"
 sudo -u jellyfin tee "$PLUGINS/configurations/Jellyfin.Plugin.YouTubeMusic.xml" >/dev/null <<XML
 <?xml version="1.0" encoding="utf-8"?>
 <PluginConfiguration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
@@ -100,8 +91,11 @@ sudo -u jellyfin tee "$PLUGINS/configurations/Jellyfin.Plugin.YouTubeMusic.xml" 
 XML
 ```
 
-You can also skip this file and set **Sidecar URL**, **Sidecar API key** and **YouTube folder**
-in the plugin settings after Step 6.
+On a host where Jellyfin runs as your own user, drop `sudo -u jellyfin`.
+
+If the catalog isn't an option (an older Jellyfin, or you changed the code), build the plugin
+yourself with `./build-plugin.sh` (needs the .NET 10 SDK, Docker or Podman) and copy
+`dist/YouTubeMusic_*` into `$PLUGINS`.
 
 > **Use the API key on shared machines.** Any user on the host can connect to `127.0.0.1`.
 > Without a key, they could use your users' YouTube logins through the sidecar.
@@ -109,6 +103,7 @@ in the plugin settings after Step 6.
 ## Step 4: Build the sidecar
 
 ```bash
+git clone https://github.com/consultomer/Tunefin.git "$TUNEFIN"
 cd "$TUNEFIN/ytm-sidecar"
 npm ci && npm run build && npm prune --omit=dev
 ```
@@ -230,16 +225,20 @@ Each user opens `https://<your-jellyfin>/YouTube` while signed in to Jellyfin We
 
 ## Updating
 
+**Plugin:** update it under *Dashboard → Plugins* when Jellyfin offers a new version, then
+restart Jellyfin.
+
+**Sidecar:**
+
 ```bash
 cd "$TUNEFIN" && git pull
-./build-plugin.sh
-sudo -u jellyfin cp dist/YouTubeMusic_*/Jellyfin.Plugin.YouTubeMusic.dll "$PLUGINS"/YouTubeMusic_*/
 (cd ytm-sidecar && npm ci && npm run build && npm prune --omit=dev)
 sudo systemctl restart tunefin-sidecar      # or: screen -S tunefin -X quit; screen -dmS tunefin ~/tunefin-sidecar.sh
 ```
 
-Then restart Jellyfin to load the new plugin version. Copy only the DLL: Jellyfin rewrites
-`meta.json` itself.
+If you installed the plugin with `./build-plugin.sh` before it was in the catalog, install it from
+the catalog once (Step 3), then delete `$PLUGINS/YouTubeMusic_1.0.0.0/` and restart Jellyfin. Your
+settings and users' cookies are kept.
 
 If YouTube playback breaks, update yt-dlp first:
 `python3 -m pip install --user -U "yt-dlp[default]"` (or `pipx upgrade yt-dlp`).
@@ -248,7 +247,7 @@ If YouTube playback breaks, update yt-dlp first:
 
 | Symptom | Fix |
 |---|---|
-| Plugin missing or *Not supported* | Jellyfin is older than 12.0, or the files went to the wrong `plugins` folder. Check *Dashboard → Paths* |
+| Tunefin missing in the Catalog, or *Not supported* | Jellyfin is older than 12.0, or the repository URL is wrong |
 | Test connection fails | Is the sidecar running (`curl http://127.0.0.1:8787/health`)? Do **Sidecar URL** and the port match? Is the API key the same in both places? |
 | `401` from the sidecar | The plugin's **Sidecar API key** doesn't match the sidecar's `API_KEY` |
 | `spawn yt-dlp ENOENT` in the sidecar log | yt-dlp isn't on the service's `PATH`. Set `YTDLP_PATH` |
@@ -260,7 +259,7 @@ If YouTube playback breaks, update yt-dlp first:
 
 1. Stop and remove the sidecar (`sudo systemctl disable --now tunefin-sidecar` and delete the
    unit, or remove the `screen`/cron lines).
-2. Delete `$PLUGINS/YouTubeMusic_*`, `$PLUGINS/configurations/Jellyfin.Plugin.YouTubeMusic.xml`
+2. Uninstall Tunefin under *Dashboard → Plugins*, then delete `$PLUGINS/configurations/Jellyfin.Plugin.YouTubeMusic.xml`
    and `$PLUGINS/Jellyfin.Plugin.YouTubeMusic/`, which holds the users' saved cookies.
 3. Restart Jellyfin, then delete the *Liked – …* libraries and `$YOUTUBE` if you don't want them
    any more.
