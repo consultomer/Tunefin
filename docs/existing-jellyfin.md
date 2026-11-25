@@ -9,7 +9,7 @@ You keep your Jellyfin container and its config. You add:
 
 Nothing needs to be stopped. Jellyfin only needs **one restart** at the end to load the plugin.
 
-> Requirements: Jellyfin **12.4** in Docker. For other versions see
+> Requirements: Jellyfin **12.0 or newer** in Docker. For other versions see
 > [Other Jellyfin versions](../README.md#other-jellyfin-versions).
 
 ---

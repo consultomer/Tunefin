@@ -1,6 +1,6 @@
 # Tunefin: YouTube Music for Jellyfin
 
-![Jellyfin](https://img.shields.io/badge/Jellyfin-12.4-blue) ![.NET](https://img.shields.io/badge/.NET-10-purple) ![Node](https://img.shields.io/badge/Node-20+-green) ![Docker](https://img.shields.io/badge/Docker-Compose-blue) ![License](https://img.shields.io/badge/License-MIT-green)
+![Jellyfin](https://img.shields.io/badge/Jellyfin-12.0%2B-blue) ![.NET](https://img.shields.io/badge/.NET-10-purple) ![Node](https://img.shields.io/badge/Node-20+-green) ![Docker](https://img.shields.io/badge/Docker-Compose-blue) ![License](https://img.shields.io/badge/License-MIT-green)
 
 Tunefin brings **YouTube Music** into **Jellyfin** and **Finamp**. Search YouTube from the normal search box, play instantly, and like a song to save it (tagged, with cover art) into your own private "Liked" library.
 
@@ -41,7 +41,7 @@ Tunefin is a Jellyfin plugin plus a small companion service (the *sidecar*) that
 - 👥 **Multi-user:** every user connects **their own** YouTube account. Users never see each other's liked songs, and shared songs are stored **once** on disk (hardlinks).
 
 ## Technologies Used
-- **Plugin:** C#, .NET 10, Jellyfin 12.4 plugin API
+- **Plugin:** C#, .NET 10, Jellyfin 12.x plugin API
 - **Sidecar:** Node.js, TypeScript, Fastify, [yt-dlp](https://github.com/yt-dlp/yt-dlp), ffmpeg, [youtubei.js](https://github.com/LuanRT/YouTube.js)
 - **Clients:** Jellyfin Web, Jellyfin Android/iOS, Finamp
 - **Deployment:** Docker Compose
@@ -97,7 +97,7 @@ Tunefin/
 
 ### Requirements
 - Docker with Compose v2 (or, for a Jellyfin without containers, Node 20+, ffmpeg and yt-dlp: see [Jellyfin Without Containers](#jellyfin-without-containers))
-- Jellyfin **12.4** (the full stack below installs it for you). For other versions see [Other Jellyfin Versions](#other-jellyfin-versions).
+- Jellyfin **12.0 or newer** (the full stack below installs it for you). For other versions see [Other Jellyfin Versions](#other-jellyfin-versions).
 
 ### Install from the Plugin Repository
 
@@ -240,7 +240,7 @@ Useful logs: `docker compose logs -f ytm-sidecar` and Jellyfin's *Dashboard → 
 
 ## Other Jellyfin Versions
 
-The plugin is compiled against Jellyfin **12.4** (.NET 10). For another version, change `JellyfinVersion` (and `TargetFramework` if needed) in `Jellyfin.Plugin.YouTubeMusic/Jellyfin.Plugin.YouTubeMusic.csproj`, plus `targetAbi` in `meta.json`, then rebuild. `curl http://<server>:8096/System/Info/Public` shows your version.
+The plugin is compiled against Jellyfin **12.0** (.NET 10) and runs on every 12.x release. For an older version, change `JellyfinVersion` (and `TargetFramework` if needed) in `Jellyfin.Plugin.YouTubeMusic/Jellyfin.Plugin.YouTubeMusic.csproj`, plus `targetAbi` in `meta.json`, then rebuild. `curl http://<server>:8096/System/Info/Public` shows your version.
 
 ## Disclaimer
 
