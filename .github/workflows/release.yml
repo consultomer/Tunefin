@@ -1,0 +1,132 @@
+# Publishes a plugin release and the Jellyfin plugin repository.
+#
+#   git tag v1.0.1 && git push origin v1.0.1
+#
+# 1. Builds the plugin with version 1.0.1.0 and zips it with meta.json and logo.png.
+# 2. Creates a GitHub release with the zip.
+# 3. Adds the version to manifest.json on the gh-pages branch, which GitHub Pages serves at
+#    https://<owner>.github.io/<repo>/manifest.json. Users add that URL in Jellyfin under
+#    Dashboard -> Plugins -> Repositories.
+#
+# The release notes come from the tag message (git tag -a v1.0.1 -m "What changed").
+
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to (re)publish, e.g. v1.0.1"
+        required: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: plugin-repository
+  cancel-in-progress: false
+
+env:
+  PLUGIN_DIR: Jellyfin.Plugin.YouTubeMusic
+  ZIP_PREFIX: tunefin
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+          fetch-depth: 0
+
+      - name: Work out the version
+        id: v
+        run: |
+          TAG="${{ inputs.tag || github.ref_name }}"
+          RAW="${TAG#v}"
+          if ! [[ "$RAW" =~ ^[0-9]+(\.[0-9]+){1,3}$ ]]; then
+            echo "Tag $TAG is not a version like v1.2.3" >&2; exit 1
+          fi
+          IFS=. read -r A B C D <<< "$RAW"
+          VERSION="${A}.${B:-0}.${C:-0}.${D:-0}"
+          NOTES=$(git tag -l --format='%(contents)' "$TAG" | sed '/-----BEGIN PGP/,$d')
+          [ -n "$NOTES" ] || NOTES="Release $TAG"
+          {
+            echo "tag=$TAG"
+            echo "version=$VERSION"
+            echo "zip=${ZIP_PREFIX}_${VERSION}.zip"
+            echo "notes<<EOF"; echo "$NOTES"; echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Build
+        run: |
+          dotnet publish "$PLUGIN_DIR" -c Release -o out \
+            -p:Version=${{ steps.v.outputs.version }} \
+            -p:AssemblyVersion=${{ steps.v.outputs.version }} \
+            -p:FileVersion=${{ steps.v.outputs.version }}
+
+      - name: Package
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+          NOTES: ${{ steps.v.outputs.notes }}
+        run: |
+          mkdir -p pkg
+          cp out/Jellyfin.Plugin.YouTubeMusic.dll pkg/
+          cp "$PLUGIN_DIR/Resources/logo.png" pkg/logo.png
+          jq --arg v "$VERSION" --arg c "$NOTES" --arg t "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            '.version = $v | .changelog = $c | .timestamp = $t | .imagePath = "logo.png"' \
+            "$PLUGIN_DIR/meta.json" > pkg/meta.json
+          (cd pkg && zip -X -r "../${{ steps.v.outputs.zip }}" .)
+          echo "MD5=$(md5sum "${{ steps.v.outputs.zip }}" | cut -d' ' -f1)" >> "$GITHUB_ENV"
+
+      - name: Create or update the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.v.outputs.tag }}
+          NOTES: ${{ steps.v.outputs.notes }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "${{ steps.v.outputs.zip }}" --clobber
+          else
+            gh release create "$TAG" "${{ steps.v.outputs.zip }}" --title "Tunefin $TAG" --notes "$NOTES"
+          fi
+
+      - name: Update the plugin repository on gh-pages
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+          TAG: ${{ steps.v.outputs.tag }}
+          REPO: ${{ github.repository }}
+        run: |
+          OWNER="${REPO%%/*}"; NAME="${REPO#*/}"
+          SITE="https://${OWNER,,}.github.io/${NAME}"
+          SRC_URL="https://github.com/${REPO}/releases/download/${TAG}/${{ steps.v.outputs.zip }}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git ls-remote --exit-code --heads origin gh-pages >/dev/null; then
+            git fetch origin gh-pages
+            git worktree add site origin/gh-pages
+            git -C site checkout -B gh-pages
+          else
+            git worktree add --detach site
+            git -C site checkout --orphan gh-pages
+            git -C site rm -rf --quiet .
+          fi
+
+          cp -r pages/. site/
+          cp "$PLUGIN_DIR/Resources/logo.png" site/logo.png
+          cp "$PLUGIN_DIR/Resources/channel.png" site/icon.png
+          touch site/.nojekyll
+          python3 .github/scripts/update_manifest.py site/manifest.json pkg/meta.json \
+            "$VERSION" "$SRC_URL" "$MD5" "$SITE/logo.png"
+
+          cd site
+          git add -A
+          git commit -m "Publish Tunefin $VERSION" || echo "Nothing changed"
+          git push origin gh-pages

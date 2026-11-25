@@ -12,6 +12,7 @@ Tunefin brings **YouTube Music** into **Jellyfin** and **Finamp**. Search YouTub
 - [Project Structure](#project-structure)
 - [Installation](#installation)
   - [Requirements](#requirements)
+  - [Install from the Plugin Repository](#install-from-the-plugin-repository)
   - [New Install (Jellyfin Included)](#new-install-jellyfin-included)
   - [Existing Jellyfin Installation](#existing-jellyfin-installation)
   - [Jellyfin Without Containers](#jellyfin-without-containers)
@@ -86,6 +87,9 @@ Tunefin/
 ├── docker-compose.yml              # Full stack: Jellyfin + sidecar + plugin installer
 ├── docker-compose.addon.yml        # Sidecar + plugin installer for an existing Jellyfin
 ├── build-plugin.sh                 # Builds the plugin DLL into dist/ without Compose
+├── branding/                       # Logo source (make_logo.py) and rendered PNGs
+├── pages/                          # Plugin-repository site published to GitHub Pages
+├── .github/workflows/release.yml   # Tag v* → GitHub release + manifest.json on gh-pages
 └── .env.example                    # Ports, folders and user
 ```
 
@@ -94,6 +98,16 @@ Tunefin/
 ### Requirements
 - Docker with Compose v2 (or, for a Jellyfin without containers, Node 20+, ffmpeg and yt-dlp: see [Jellyfin Without Containers](#jellyfin-without-containers))
 - Jellyfin **12.4** (the full stack below installs it for you). For other versions see [Other Jellyfin Versions](#other-jellyfin-versions).
+
+### Install from the Plugin Repository
+
+The plugin can be installed straight from Jellyfin. Add this repository under **Dashboard → Plugins → Repositories**:
+
+```
+https://consultomer.github.io/Tunefin/manifest.json
+```
+
+Then install **Tunefin** from the **Catalog**, restart Jellyfin, and set **Sidecar URL** and **YouTube folder** in the plugin settings. You still need to run the sidecar: follow the sidecar steps in [Existing Jellyfin Installation](#existing-jellyfin-installation) or [Jellyfin Without Containers](#jellyfin-without-containers), and skip the plugin-install steps.
 
 ### New Install (Jellyfin Included)
 
@@ -187,6 +201,14 @@ The same page lists every user's connection status and has **Import now** and **
 | `DOWNLOAD_TIMEOUT_SECONDS` | `600` | Kill a stuck download |
 | `YTDLP_COOKIES_FILE` | – | Optional server-wide cookies, only for requests that don't name a user |
 | `LOG_LEVEL` | `info` | |
+
+## Releasing
+
+Push a version tag. The **Release** workflow builds the plugin, attaches the zip to a GitHub release and adds the version to `manifest.json` on the `gh-pages` branch:
+
+```bash
+git tag -a v1.0.1 -m "What changed in this version" && git push origin v1.0.1
+```
 
 ## Updating
 

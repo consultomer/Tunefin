@@ -10,7 +10,7 @@ RUN dotnet publish -c Release -o /out --no-restore
 FROM alpine:3.20
 COPY --from=build /out/Jellyfin.Plugin.YouTubeMusic.dll /plugin/
 COPY meta.json /plugin/
-COPY Resources/channel.png /plugin/logo.png
+COPY Resources/logo.png /plugin/logo.png
 COPY install/ /install/
 ENV PLUGIN_DIR_NAME=YouTubeMusic_1.0.0.0 \
     SIDECAR_URL=http://ytm-sidecar:8787 \
