@@ -1,32 +1,20 @@
-# Tunefin: Jellyfin + YouTube Music, complete stack:
+# Tunefin: Jellyfin + YouTube Music, complete stack. No clone or build needed:
 #
-#   git clone https://github.com/consultomer/Tunefin.git && cd Tunefin
-#   cp .env.example .env        # optional: change ports, paths, user
-#   docker compose up -d --build
+#   mkdir tunefin && cd tunefin
+#   curl -fsSLO https://raw.githubusercontent.com/consultomer/Tunefin/main/docker-compose.yml
+#   docker compose up -d
 #
-# Then open http://<server>:8096, finish the Jellyfin setup wizard, and connect YouTube at
-# http://<server>:8096/YouTube  (see README.md).
+# Then open http://<server>:8096, finish the Jellyfin setup wizard, install Tunefin from the
+# plugin catalog and connect YouTube at http://<server>:8096/YouTube (see README.md).
+# Optional settings (ports, folders, user) go in a .env file next to this one: see .env.example.
 #
 # Already running Jellyfin? Use docker-compose.addon.yml instead (docs/existing-jellyfin.md).
 
 services:
-  # One-shot: builds the plugin and copies it into Jellyfin's plugins folder, then exits.
-  # Jellyfin waits for it, so the plugin is loaded on the very first start.
-  ytm-plugin:
-    build: ./Jellyfin.Plugin.YouTubeMusic
-    image: jellyfin-ytm-plugin-installer:latest
-    restart: "no"
-    network_mode: none
-    environment:
-      SIDECAR_URL: http://ytm-sidecar:8787
-      LIBRARY_ROOT_PATH: /media/YouTube     # where Jellyfin sees ${YOUTUBE_PATH}
-    volumes:
-      - ${JELLYFIN_CONFIG_PATH:-./data/jellyfin/config}/plugins:/plugins
-
   # Search, streaming and downloads (Node + yt-dlp + ffmpeg). Not exposed outside the compose network.
+  # To build it from source instead, replace `image:` with `build: ./ytm-sidecar`.
   ytm-sidecar:
-    build: ./ytm-sidecar
-    image: ytm-sidecar:latest
+    image: ghcr.io/consultomer/tunefin-sidecar:${TUNEFIN_VERSION:-latest}
     restart: unless-stopped
     # Same user as Jellyfin: it must read the cookies Jellyfin saves (mode 600), and Jellyfin
     # must read the songs it downloads.
@@ -56,7 +44,4 @@ services:
       - ${MUSIC_PATH:-./data/music}:/media/Music            # your own music: add it as a "Music" library
       - ${YOUTUBE_PATH:-./data/youtube}:/media/YouTube      # created and managed by the plugin
     depends_on:
-      ytm-plugin:
-        condition: service_completed_successfully
-      ytm-sidecar:
-        condition: service_started
+      - ytm-sidecar

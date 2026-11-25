@@ -3,11 +3,10 @@
 You keep your Jellyfin container and its config. You add:
 
 1. **`ytm-sidecar`**: a small service that searches, streams and downloads from YouTube Music.
-2. **`ytm-plugin`**: a one-shot container that builds the plugin and copies it into your Jellyfin's
-   `plugins` folder, then exits.
-3. **One extra folder** (`YouTube`) mounted into both Jellyfin and the sidecar.
-
-Nothing needs to be stopped. Jellyfin only needs **one restart** at the end to load the plugin.
+   It runs from a ready-made image (`ghcr.io/consultomer/tunefin-sidecar`), so you don't clone or
+   build anything.
+2. **One extra folder** (`YouTube`) mounted into both Jellyfin and the sidecar.
+3. **The Tunefin plugin**, installed from Jellyfin's plugin catalog.
 
 > Requirements: Jellyfin **12.0 or newer** in Docker. For other versions see
 > [Other Jellyfin versions](../README.md#other-jellyfin-versions).
@@ -18,7 +17,7 @@ Nothing needs to be stopped. Jellyfin only needs **one restart** at the end to l
 
 | What | How to find it | Example |
 |---|---|---|
-| **Plugins folder** on the host | The host folder mounted at `/config` in Jellyfin, plus `/plugins`. It contains a `configurations/` folder. For the linuxserver image it's `<config>/data/plugins` | `/srv/jellyfin/config/plugins` |
+| **Plugins folder** on the host | The host folder mounted at `/config` in Jellyfin, plus `/plugins`. It contains a `configurations/` folder. For the linuxserver image it's `<config>/data/plugins`. The sidecar reads users' cookies from it | `/srv/jellyfin/config/plugins` |
 | **Docker network** of Jellyfin | `docker inspect <jellyfin> -f '{{json .NetworkSettings.Networks}}'` | `jellyfin_default` |
 | **User** Jellyfin runs as | `docker inspect <jellyfin> -f '{{.Config.User}}'` (empty = root `0:0`). For linuxserver it's your `PUID`/`PGID` | `1000:1000` |
 
@@ -46,22 +45,21 @@ sudo mkdir -p /srv/media/YouTube && sudo chown 1000:1000 /srv/media/YouTube   # 
 
 The new mount is applied when Jellyfin is recreated in Step 4.
 
-## Step 3: Add the sidecar and the plugin installer
+## Step 3: Add the sidecar
 
 Pick **A** if Jellyfin is in your own `docker-compose.yml`, or **B** to run this repo's add-on
 file next to it.
 
 ### Option A: paste into your own docker-compose.yml (recommended)
 
-Clone this repo next to your compose file (`git clone … Tunefin`), then add:
+Add this service next to your Jellyfin service:
 
 ```yaml
 services:
   # ...your jellyfin service...
 
   ytm-sidecar:
-    build: ./Tunefin/ytm-sidecar
-    image: ytm-sidecar:latest
+    image: ghcr.io/consultomer/tunefin-sidecar:latest
     container_name: ytm-sidecar
     restart: unless-stopped
     user: "1000:1000"                  # SAME user as Jellyfin (root = "0:0")
@@ -74,51 +72,45 @@ services:
       - /srv/jellyfin/config/plugins/Jellyfin.Plugin.YouTubeMusic/users:/user-cookies:ro
     # must share a network with Jellyfin; if Jellyfin uses a custom network, add it here:
     # networks: [your_network]
-
-  ytm-plugin:
-    build: ./Tunefin/Jellyfin.Plugin.YouTubeMusic
-    image: jellyfin-ytm-plugin-installer:latest
-    restart: "no"
-    network_mode: none
-    environment:
-      SIDECAR_URL: http://ytm-sidecar:8787
-      LIBRARY_ROOT_PATH: /media/YouTube   # where JELLYFIN sees the folder from Step 2
-    volumes:
-      - /srv/jellyfin/config/plugins:/plugins
 ```
 
-Start only the new services. This doesn't touch your other containers:
+Start only the new service. This doesn't touch your other containers:
 
 ```bash
-docker compose up -d --build --no-deps ytm-sidecar
-docker compose up --build --no-deps ytm-plugin      # prints "YouTube Music plugin installed…" and exits
+docker compose up -d --no-deps ytm-sidecar
 ```
 
 ### Option B: use docker-compose.addon.yml
 
 ```bash
-git clone https://github.com/consultomer/Tunefin.git && cd Tunefin
-cp .env.example .env
-# edit .env: PUID, PGID, JELLYFIN_PLUGINS_PATH, YOUTUBE_PATH, JELLYFIN_NETWORK (and LIBRARY_ROOT_PATH if not /media/YouTube)
-docker compose -f docker-compose.addon.yml up -d --build
+mkdir tunefin && cd tunefin
+curl -fsSLO https://raw.githubusercontent.com/consultomer/Tunefin/main/docker-compose.addon.yml
+curl -fsSL  https://raw.githubusercontent.com/consultomer/Tunefin/main/.env.example -o .env
+# edit .env: PUID, PGID, JELLYFIN_PLUGINS_PATH, YOUTUBE_PATH, JELLYFIN_NETWORK
+docker compose -f docker-compose.addon.yml up -d
 ```
 
 If Jellyfin uses `network_mode: host`, there's no shared network. Instead, publish the
 sidecar's port (`ports: ["127.0.0.1:8787:8787"]`) and set **Sidecar URL** to
 `http://127.0.0.1:8787` in the plugin settings.
 
-## Step 4: Restart Jellyfin once
+## Step 4: Install the plugin
 
-Recreate it, so the Step 2 volume is applied and the plugin is loaded:
+1. Recreate Jellyfin so the Step 2 volume is applied:
+   ```bash
+   docker compose up -d jellyfin        # skip if you mounted the folder already
+   ```
+2. In Jellyfin, open **Dashboard → Plugins → Repositories**, click **+**, name it *Tunefin* and
+   paste:
+   ```
+   https://consultomer.github.io/Tunefin/manifest.json
+   ```
+3. Open **Catalog**, choose **Tunefin** and click **Install**.
+4. Restart Jellyfin once to load it: `docker restart <jellyfin>`.
 
-```bash
-docker compose up -d jellyfin        # or: docker restart <jellyfin> if you mounted the folder already
-```
-
-Check *Dashboard → Plugins*: **YouTube Music** should be *Active*. Open its settings and check
-that:
-- **Sidecar URL** is `http://ytm-sidecar:8787`.
-- **YouTube folder, as seen by Jellyfin** matches your Step 2 path.
+Check *Dashboard → Plugins*: **Tunefin** should be *Active*. Open its settings and check that:
+- **Sidecar URL** is `http://ytm-sidecar:8787` (the default).
+- **YouTube folder, as seen by Jellyfin** matches your Step 2 path (default `/media/YouTube`).
 - **Test connection** returns songs.
 
 ## Step 5: Connect YouTube
@@ -134,19 +126,31 @@ libraries" are switched to an explicit list that keeps including new libraries.
 
 ## Updating
 
-```bash
-cd Tunefin && git pull && cd ..
-docker compose up -d --build --no-deps ytm-sidecar
-docker compose up --build --no-deps ytm-plugin
-docker restart <jellyfin>
-```
+- **Plugin:** update it under *Dashboard → Plugins* when Jellyfin offers a new version, then
+  restart Jellyfin.
+- **Sidecar:** pull the new image. Do this too when YouTube playback breaks: the image is rebuilt
+  every week with the latest yt-dlp.
+  ```bash
+  docker compose pull ytm-sidecar && docker compose up -d --no-deps ytm-sidecar
+  ```
 
-The installer swaps the DLL atomically, so it's safe while Jellyfin is running. The new version
-loads on the restart.
+### Moving from the old `ytm-plugin` installer
+
+Earlier versions of this guide used a `ytm-plugin` container that built the plugin into
+`<plugins>/YouTubeMusic_1.0.0.0/`. To switch to the catalog:
+
+1. Remove the `ytm-plugin` service from your compose file, and change the sidecar's `build:` line
+   to `image: ghcr.io/consultomer/tunefin-sidecar:latest`. Then run
+   `docker compose up -d --remove-orphans ytm-sidecar`.
+2. Install Tunefin from the catalog (Step 4).
+3. Delete `<plugins>/YouTubeMusic_1.0.0.0/` and restart Jellyfin.
+
+Your settings (`configurations/Jellyfin.Plugin.YouTubeMusic.xml`), users' cookies and liked songs
+stay where they are.
 
 ## Uninstalling
 
-1. Remove the `ytm-sidecar` and `ytm-plugin` services, and delete
-   `<plugins>/YouTubeMusic_*` and `<plugins>/configurations/Jellyfin.Plugin.YouTubeMusic.xml`.
+1. Uninstall Tunefin under *Dashboard → Plugins*, remove the `ytm-sidecar` service, and delete
+   `<plugins>/configurations/Jellyfin.Plugin.YouTubeMusic.xml`.
 2. Restart Jellyfin, then delete the *Liked – …* libraries if you don't want them any more.
    Users' saved cookies are in `<plugins>/Jellyfin.Plugin.YouTubeMusic/users/`; delete that folder too.
