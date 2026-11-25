@@ -12,7 +12,7 @@ When nothing runs in a container, the plugin and the sidecar see the **same path
 have to translate folders between `/youtube` and `/media/YouTube`: you use the real folder
 everywhere.
 
-> Requirements: Jellyfin **12.4**. For other versions see
+> Requirements: Jellyfin **12.0 or newer**. For other versions see
 > [Other Jellyfin versions](../README.md#other-jellyfin-versions).
 > Check it with `curl -s http://127.0.0.1:8096/System/Info/Public`.
 
@@ -248,7 +248,7 @@ If YouTube playback breaks, update yt-dlp first:
 
 | Symptom | Fix |
 |---|---|
-| Plugin missing or *Not supported* | Jellyfin isn't 12.4, or the files went to the wrong `plugins` folder. Check *Dashboard → Paths* |
+| Plugin missing or *Not supported* | Jellyfin is older than 12.0, or the files went to the wrong `plugins` folder. Check *Dashboard → Paths* |
 | Test connection fails | Is the sidecar running (`curl http://127.0.0.1:8787/health`)? Do **Sidecar URL** and the port match? Is the API key the same in both places? |
 | `401` from the sidecar | The plugin's **Sidecar API key** doesn't match the sidecar's `API_KEY` |
 | `spawn yt-dlp ENOENT` in the sidecar log | yt-dlp isn't on the service's `PATH`. Set `YTDLP_PATH` |
