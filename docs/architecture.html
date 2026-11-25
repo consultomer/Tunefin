@@ -226,7 +226,8 @@ td.native { color: var(--accent); }
           <tr><td>Cookies folder</td><td>Mounted read-only at <code>/user-cookies</code></td><td class="native"><code>USER_COOKIES_DIR</code> points straight at <code>plugins/Jellyfin.Plugin.YouTubeMusic/users</code></td></tr>
           <tr><td>Same user</td><td><code>user: PUID:PGID</code> in compose</td><td class="native">The service runs as Jellyfin's user</td></tr>
           <tr><td>API key</td><td>Optional</td><td class="native">Recommended: anyone on the machine can reach loopback</td></tr>
-          <tr><td>Plugin install</td><td>One-shot <code>ytm-plugin</code> container</td><td class="native"><code>./build-plugin.sh</code>, then copy into <code>plugins/</code></td></tr>
+          <tr><td>Plugin install</td><td>Plugin catalog (Tunefin repository)</td><td class="native">Plugin catalog, the same way</td></tr>
+          <tr><td>Sidecar</td><td>Prebuilt image <code>ghcr.io/consultomer/tunefin-sidecar</code></td><td class="native">Built with <code>npm ci &amp;&amp; npm run build</code></td></tr>
           <tr><td>Keep running</td><td><code>restart: unless-stopped</code></td><td class="native">systemd unit, or <code>screen</code> + cron <code>@reboot</code></td></tr>
         </tbody>
       </table>
